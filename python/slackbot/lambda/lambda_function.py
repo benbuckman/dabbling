@@ -74,6 +74,11 @@ def random_wikipedia_link():
     conn.request("HEAD", "/wiki/Special:Random")
     res = conn.getresponse()
     url = res.getheader('location')
+
+    # TODO call "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=<title>"
+    # parse the JSON, and fetch the extract (`query.pages[id].extract`)
+    # to include in the response.
+
     conn.close()
     return build_response(None, url)
 
