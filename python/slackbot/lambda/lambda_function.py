@@ -1,6 +1,9 @@
 '''
 AWS Lambda function for responding to Slack "Slash command"
-(https://api.slack.com/slash-commands)
+
+http://docs.aws.amazon.com/lambda/latest/dg/python-programming-model-handler-types.html
+https://api.slack.com/slash-commands
+
 Based on existing Lambda Slack template.
 
 For generating the encrypted verification key:
@@ -24,7 +27,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 
-def respond(err, msg=None):
+def build_response(err, msg=None):
     response = {}
 
     if err:
@@ -47,6 +50,28 @@ def respond(err, msg=None):
     return response
 
 
+def respond_to_command(text, user=None, channel=None):
+    if text == "help":
+        return list_commands()
+
+    elif text == "learn":
+        return random_wikipedia_link()
+
+    else:
+        return build_response(
+            None,
+            "Hello %s! I don't understand '%s'." % (user, text)
+        )
+
+
+def list_commands():
+    return build_response(None, "Valid commands are: help, learn")
+
+
+def random_wikipedia_link():
+    return build_response(None, "Coming soon!")
+
+
 def lambda_handler(event, context):
     logger.info("Received: %s" % event)
 
@@ -54,11 +79,17 @@ def lambda_handler(event, context):
     token = params['token'][0]
     if token != expected_token:
         logger.error("Request token (%s) does not match expected: %s" % token)
-        return respond(Exception('Invalid request token'))
+        return build_response(Exception('Invalid request token'))
 
-    user = params['user_name'][0]
-    command = params['command'][0]
-    channel = params['channel_name'][0]
-    command_text = params['text'][0]
+    try:
+        return respond_to_command(
+            params['text'][0],
+            params['user_name'][0],
+            params['channel_name'][0]
+        )
 
-    return respond(None, "Hello! %s invoked %s in %s with the following text: %s" % (user, command, channel, command_text))
+    except:
+        return build_response(
+            None,
+            "Unexpected error: %s" % sys.exc_info()[0]
+        )
