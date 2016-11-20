@@ -14,6 +14,7 @@ import boto3
 import json
 import logging
 import os
+import httplib
 
 from base64 import b64decode
 from urlparse import parse_qs
@@ -69,7 +70,12 @@ def list_commands():
 
 
 def random_wikipedia_link():
-    return build_response(None, "Coming soon!")
+    conn = httplib.HTTPSConnection("en.wikipedia.org")
+    conn.request("HEAD", "/wiki/Special:Random")
+    res = conn.getresponse()
+    url = res.getheader('location')
+    conn.close()
+    return build_response(None, url)
 
 
 def lambda_handler(event, context):

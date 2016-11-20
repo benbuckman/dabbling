@@ -20,10 +20,10 @@ main() {
     mkdir -p "${BUILD_DIR}" > /dev/null
 
     cd "$SRC_DIR"
-    zip -r "${ZIP_PATH}" $(find . -name "*.py")
+    zip -r "${ZIP_PATH}" .
 
-    # TODO install dependencies if there are any, e.g.
-    # pip install module-name -t /path/to/project-dir
+    # install dependencies
+    #pip install ?? -t "$SRC_DIR"
 
     # Docs: http://docs.aws.amazon.com/cli/latest/reference/lambda/update-function-code.html
     aws lambda --profile "$LAMBDA_PROFILE" update-function-code \
