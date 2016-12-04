@@ -14,7 +14,8 @@ import boto3
 import json
 import logging
 import os
-import httplib
+import re
+import requests
 
 from base64 import b64decode
 from urlparse import parse_qs
@@ -28,7 +29,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 
-def build_response(err, msg=None):
+# `err` should only be used for auth error,
+# everything else should be 200 so it goes to Slack.
+def build_response(err, msg=None, attachment=None):
     response = {}
 
     if err:
@@ -36,12 +39,20 @@ def build_response(err, msg=None):
         response['body'] = err.message
     else:
         response['statusCode'] = '200'
-        response['body'] = json.dumps(
-            {
-                "response_type": "in_channel",
-                "text": msg
-            }
-        )
+
+        body = {
+            "response_type": "in_channel",
+            "text": msg
+        }
+
+        if attachment is not None:
+            body['attachments'] = [
+                {
+                    'text': attachment
+                }
+            ]
+
+        response['body'] = json.dumps(body)
 
     response['headers'] = {
         'Content-Type': 'application/json'
@@ -70,17 +81,40 @@ def list_commands():
 
 
 def random_wikipedia_link():
-    conn = httplib.HTTPSConnection("en.wikipedia.org")
-    conn.request("HEAD", "/wiki/Special:Random")
-    res = conn.getresponse()
-    url = res.getheader('location')
+    logger.info("Fetching random Wikipedia article")
 
-    # TODO call "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=<title>"
-    # parse the JSON, and fetch the extract (`query.pages[id].extract`)
-    # to include in the response.
+    req = requests.head("https://en.wikipedia.org/wiki/Special:Random")
+    logger.debug('req.url for random article: %s' % req.url)
 
-    conn.close()
-    return build_response(None, url)
+    article_url = req.headers['location']
+    logger.info('Returned URL: %s' % article_url)
+
+    # Fetch the article extract
+    # URL looks like 'https://en.wikipedia.org/wiki/foo'
+    article_slug = re.findall(r"/wiki/(.*)$", article_url)
+    logger.debug('Extracted article_slug: %s' % article_slug)
+
+    req = requests.get('https://en.wikipedia.org/w/api.php', params={
+        'format': 'json',
+        'action': 'query',
+        'prop': 'extracts',
+        'exintro': '',
+        'explaintext': '',
+        'titles': article_slug
+    })
+    logger.debug('req.url for article metadata: %s' % req.url)
+    logger.debug('metadata raw response: status: %s, body: %s' % req.status_code. req.text)
+
+    article_meta = req.json()
+    logger.debug('article_meta: %s', article_meta)
+
+    _pages = article_meta['query']['pages']
+    _article_id = _pages.keys()[0]
+    logger.debug('parsed article id: %s' % _article_id)
+    extract = _pages[_article_id]['extract']
+    logger.debug('parsed extract: %s' % extract)
+
+    return build_response(None, article_url, extract)
 
 
 def lambda_handler(event, context):
