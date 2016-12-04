@@ -17,6 +17,7 @@ import os
 import re
 import requests
 import traceback
+import urllib
 
 from base64 import b64decode
 from urlparse import parse_qs
@@ -103,8 +104,10 @@ def random_wikipedia_link():
 
     # Fetch the article extract
     # URL looks like 'https://en.wikipedia.org/wiki/foo'
-    article_slug = re.findall(r"/wiki/(.*)$", article_url)
+    article_slug = re.findall(r"/wiki/(.*)$", article_url)[0]
     logger.debug('Extracted article_slug: %s' % article_slug)
+
+    article_slug = urllib.unquote(article_slug)
 
     req = requests.get('https://en.wikipedia.org/w/api.php', params={
         'format': 'json',
