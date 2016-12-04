@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import requests
+import traceback
 
 from base64 import b64decode
 from urlparse import parse_qs
@@ -69,6 +70,9 @@ def respond_to_command(text, user=None, channel=None):
     elif text == "learn":
         return random_wikipedia_link()
 
+    # elif text == "info":
+    #     return show_info()
+
     else:
         return build_response(
             None,
@@ -77,7 +81,15 @@ def respond_to_command(text, user=None, channel=None):
 
 
 def list_commands():
-    return build_response(None, "Valid commands are: help, learn")
+    valid_commands = [
+        'help',
+        'learn',
+        #'info'
+    ]
+    return build_response(
+        None,
+        ("Valid commands are: %s" % ', '.join(valid_commands))
+    )
 
 
 def random_wikipedia_link():
@@ -98,12 +110,10 @@ def random_wikipedia_link():
         'format': 'json',
         'action': 'query',
         'prop': 'extracts',
-        'exintro': '',
-        'explaintext': '',
         'titles': article_slug
     })
     logger.debug('req.url for article metadata: %s' % req.url)
-    logger.debug('metadata raw response: status: %s, body: %s' % req.status_code. req.text)
+    logger.debug('metadata raw response: status: %s, body: %s' % (req.status_code, req.text))
 
     article_meta = req.json()
     logger.debug('article_meta: %s', article_meta)
@@ -114,7 +124,31 @@ def random_wikipedia_link():
     extract = _pages[_article_id]['extract']
     logger.debug('parsed extract: %s' % extract)
 
+    extract = simplify_html(extract, 600)
+
     return build_response(None, article_url, extract)
+
+
+def simplify_html(html, max_len=None):
+    # line breaks
+    html = re.sub('(</p>|<br>)', '\n', html)
+
+    # remove all other tags
+    html = re.sub('<[^<]+?>', '', html)
+
+    if len(html) > max_len:
+        html = html[:max_len] + '...'
+
+    logger.debug('simplified html %s' % html)
+    return html
+
+
+def show_info():
+    logger.info('Returning environment info')
+    return build_response(
+        None,
+        '\n'.join([("%s: %s" % item) for item in os.environ.items()])
+    )
 
 
 def lambda_handler(event, context):
@@ -132,9 +166,7 @@ def lambda_handler(event, context):
             params['user_name'][0],
             params['channel_name'][0]
         )
-
-    except:
-        return build_response(
-            None,
-            "Unexpected error: %s" % sys.exc_info()[0]
-        )
+    except Exception as err:
+        err_msg = 'Error: %s\n%s' % (err, traceback.format_exc())
+        logger.error(err_msg)
+        return build_response(None, err_msg)
