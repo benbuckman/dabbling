@@ -9,7 +9,7 @@ print(plus5(3))
 print(plus10(3))
 # >> 13
 
-print(list(filter(lambda x: x % 2 == 0, range(1,10))))
+print(list(filter(lambda x: x % 2 == 0, range(1, 10))))
 # >> 2, 4, 6, 8
 
 phrase = 'The quick brown fox jumps'
