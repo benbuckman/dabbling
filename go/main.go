@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-var topNumber int        // shared top-level scope
+var topNumber int // shared top-level scope
 
 func multiply(x, y float32) (z float32) {
 	z = x * y
@@ -16,7 +16,7 @@ func setNumber(n int) {
 	topNumber = n
 }
 
-func incrementPtr(n *int) (*int) {
+func incrementPtr(n *int) *int {
 	*n = *n + 1
 	return n
 }
@@ -27,7 +27,7 @@ type person struct {
 }
 
 // pseudo-constructor ?
-func Person(name string, age int) (person) {
+func Person(name string, age int) person {
 	if len(name) == 0 {
 		name = "who?"
 	}
@@ -38,7 +38,7 @@ func main() {
 	fmt.Println(multiply(10, 3.5))
 
 	fmt.Printf("Initial num: %v\n", topNumber)
-	defer fmt.Printf("Deferred original num: %v\n", topNumber)         // evaluates w/ current value (0)!
+	defer fmt.Printf("Deferred original num: %v\n", topNumber) // evaluates w/ current value (0)!
 	setNumber(25)
 	fmt.Printf("Set num: %v\n", topNumber)
 
@@ -49,7 +49,7 @@ func main() {
 	var numRange2 []int
 
 	for i := 1; i <= n; i++ {
-		numRange1[i - 1] = i
+		numRange1[i-1] = i
 		numRange2 = append(numRange2, i)
 
 		var char string
@@ -114,10 +114,21 @@ func main() {
 	bytes := []byte{1, 2, 3, 4}
 	fmt.Println(bytes)
 	var strings []string
-	for _, b := range (bytes) {
+	for _, b := range bytes {
 		strings = append(strings, strconv.Itoa(int(b)))
 	}
 	fmt.Println(strings)
 
-}
+	fmt.Println("---------------------------------")
 
+	// "shift" an array
+	nums := []int{}
+	for i := 0; i < 10; i++ {
+		nums = append(nums, i)
+	}
+	for len(nums) > 0 {
+		nums = nums[1:]
+		fmt.Println(nums)
+	}
+
+}
