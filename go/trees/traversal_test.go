@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 	. "golang.org/x/tour/tree"
 	"reflect"
@@ -51,49 +50,36 @@ func exampleTree()(Tree) {
 	}
 }
 
-func TestIntro(t *testing.T) {
-	fmt.Println("Hello test")
-
-	a := []int{1, 2}
-	b := []int{1, 2}
-	c := []int{2, 3}
-
-	fmt.Println(reflect.DeepEqual(a, b))
-	fmt.Println(reflect.DeepEqual(a, c))
+func compareOrder(t *testing.T, expectedOrder []int, actualOrder []int) {
+	if !reflect.DeepEqual(expectedOrder, actualOrder) {
+		t.Errorf("Incorrect order:\nExpected %v\nGot %v", expectedOrder, actualOrder)
+	}
 }
 
 func TestTraversePreOrder(t *testing.T) {
 	tree := exampleTree()
-	parsedOrder := TraversePreOrder(&tree)
+	actualOrder := TraversePreOrder(&tree)
 	expectedOrder := []int{8, 5, 9, 7, 1, 12, 2, 4, 11, 3}
-	if !reflect.DeepEqual(expectedOrder, parsedOrder) {
-		t.Errorf("Incorrect order:\nExpected %v\nGot %v", expectedOrder, parsedOrder)
-	}
+	compareOrder(t, expectedOrder, actualOrder)
 }
 
 func TestTraversePostOrder(t *testing.T) {
 	tree := exampleTree()
-	parsedOrder := TraversePostOrder(&tree)
+	actualOrder := TraversePostOrder(&tree)
 	expectedOrder := []int{9, 1, 2, 12, 7, 5, 3, 11, 4, 8}
-	if !reflect.DeepEqual(expectedOrder, parsedOrder) {
-		t.Errorf("Incorrect order:\nExpected %v\nGot %v", expectedOrder, parsedOrder)
-	}
+	compareOrder(t, expectedOrder, actualOrder)
 }
 
 func TestTraverseInOrder(t *testing.T) {
 	tree := exampleTree()
-	parsedOrder := TraverseInOrder(&tree)
+	actualOrder := TraverseInOrder(&tree)
 	expectedOrder := []int{9, 5, 1, 7, 2, 12, 8, 4, 3, 11}
-	if !reflect.DeepEqual(expectedOrder, parsedOrder) {
-		t.Errorf("Incorrect order:\nExpected %v\nGot %v", expectedOrder, parsedOrder)
-	}
+	compareOrder(t, expectedOrder, actualOrder)
 }
 
 func TestTraverseLevelOrder(t *testing.T) {
 	tree := exampleTree()
-	parsedOrder := TraverseLevelOrder(&tree)
+	actualOrder := TraverseLevelOrder(&tree)
 	expectedOrder := []int{8, 5, 4, 9, 7, 11, 1, 12, 3, 2}
-	if !reflect.DeepEqual(expectedOrder, parsedOrder) {
-		t.Errorf("Incorrect order:\nExpected %v\nGot %v", expectedOrder, parsedOrder)
-	}
+	compareOrder(t, expectedOrder, actualOrder)
 }
