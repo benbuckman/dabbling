@@ -131,4 +131,27 @@ func main() {
 		fmt.Println(nums)
 	}
 
+	fmt.Println("---------------------------------")
+
+	getEmptyCharboard := func(x, y int) *[][]rune {
+		b := make([][]rune, x)
+		for i := range b {
+			b[i] = make([]rune, y)
+		}
+		return &b
+	}
+
+	// TODO understand how to assign directly to charboard
+	charboardPtr := getEmptyCharboard(10, 5)
+	//charboard := *charboardPtr
+	for _, r := range *charboardPtr {
+		for j := range r {
+			r[j] = 'X'
+		}
+	}
+
+	fmt.Printf("%v", charboardPtr)
+
+	fmt.Println("---------------------------------")
+
 }
