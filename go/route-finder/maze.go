@@ -48,27 +48,30 @@ func mapColor(r rune) termbox.Attribute {
 
 type gameGrid [][]rune
 
-func initGrid() *gameGrid {
+func initialLayout() *[]string {
 	// layout in human-readable format.
-	// rows here don't have to be as long as actual grid (but can't be longer).
-	// X's indicate a piece, space indicates no piece.
-	readableGrid := []string{
-		"              F               ",
-		"",
-		"XXXXXXXXXXXXXX XXXXXXXXXXXXXXX",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"X                            X",
-		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+	// see `mapColor()` for allowed letters.
+	return &[]string{
+		"           F           ",
+		"                       ",
+		"XXXXXXXXXXX XXXXXXXXXXX",
+		"X                     X",
+		"X       XXXXXXX       X",
+		"X                     X",
+		"X          S          X",
+		"X                     X",
+		"X                     X",
+		"X                     X",
+		"X                     X",
+		"X                     X",
+		"X                     X",
+		"X                     X",
+		"XXXXXXXXXXXXXXXXXXXXXXX",
 	}
+}
+
+func initGrid() *gameGrid {
+	readableGrid := *initialLayout()
 
 	gridHeight = len(readableGrid)
 	for _, line := range readableGrid {
