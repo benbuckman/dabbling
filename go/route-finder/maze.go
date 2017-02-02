@@ -49,15 +49,15 @@ func mapColor(r rune) termbox.Attribute {
 	}
 }
 
-func draw(grid *gameGrid) error {
+func draw(grid *gameGrid) {
 	var outerWidth, outerHeight int = termbox.Size()
 
 	boardWidth := gridWidth * gridPieceWidth
 	boardHeight := gridHeight * gridPieceHeight
 
 	if boardWidth > outerWidth || boardHeight > outerHeight {
-		return fmt.Errorf("The screen is too small (have %v,%v, need %v,%v)",
-			outerWidth, outerHeight, boardWidth, boardHeight)
+		panic(fmt.Errorf("The screen is too small (have %v,%v, need %v,%v)",
+			outerWidth, outerHeight, boardWidth, boardHeight))
 	}
 
 	boardStartX := int((outerWidth - boardWidth) / 2)
@@ -97,7 +97,6 @@ func draw(grid *gameGrid) error {
 	}
 
 	termbox.Flush()
-	return nil
 }
 
 type gameGrid [][]rune
@@ -177,10 +176,7 @@ func main() {
 		}
 	}()
 
-	err = draw(grid)
-	if err != nil {
-		panic(err)
-	}
+	draw(grid)
 
 loop:
 	for {
@@ -190,11 +186,7 @@ loop:
 				break loop
 			}
 		default:
-			err := draw(grid)
-			if err != nil {
-				logOnExit(err.Error())
-				break loop
-			}
+			draw(grid)
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
