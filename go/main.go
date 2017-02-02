@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"math"
 )
 
 var topNumber int // shared top-level scope
@@ -151,6 +152,29 @@ func main() {
 	}
 
 	fmt.Printf("%v", charboardPtr)
+
+	fmt.Println("---------------------------------")
+
+	showValAndType := func(v interface{}) {
+		fmt.Printf("%v %T\n", v, v)
+	}
+	showValAndType(0)
+	showValAndType(0.0)
+	showValAndType(1)
+	showValAndType(1.0)
+
+	func() {
+		dividedNumber := 9 / 5
+		fmt.Printf("Divide int by int: %v (%T)\n", dividedNumber, dividedNumber)
+	}()
+	func() {
+		dividedNumber := float64(9) / 5
+		fmt.Printf("Divide float by int: %v (%T)\n", dividedNumber, dividedNumber)
+	}()
+	func() {
+		flooredNumber := math.Floor(float64(9) / 5)
+		fmt.Printf("Floor: %v (%T)\n", flooredNumber, flooredNumber)
+	}()
 
 	fmt.Println("---------------------------------")
 

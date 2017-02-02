@@ -3,24 +3,26 @@
 package main
 
 import (
-	"github.com/nsf/termbox-go"
-	"fmt"
 	"bytes"
+	"fmt"
+	"github.com/nsf/termbox-go"
+	"math"
 	"time"
 )
 
 const (
-	gridWidth = 30
+	gridWidth  = 30
 	gridHeight = 15
 	// cells are taller than they are wide, compensate
-	gridPieceWidth = 4
+	gridPieceWidth  = 4
 	gridPieceHeight = 2
 
 	windowBackgroundColor = termbox.ColorWhite
-	boardBackgroundColor = termbox.ColorBlack
+	boardBackgroundColor  = termbox.ColorBlack
 )
 
 var exitLogBuffer bytes.Buffer
+
 func logOnExit(s string) {
 	exitLogBuffer.WriteString(s)
 	exitLogBuffer.WriteString("\n")
@@ -33,7 +35,7 @@ func printStr(x, y int, fg, bg termbox.Attribute, msg string) {
 	}
 }
 
-func mapColor(r rune) (termbox.Attribute) {
+func mapColor(r rune) termbox.Attribute {
 	colorMap := map[rune]termbox.Attribute{
 		'B': termbox.ColorBlue,
 		'R': termbox.ColorRed,
@@ -47,11 +49,7 @@ func mapColor(r rune) (termbox.Attribute) {
 	}
 }
 
-var drawCounter int = 0
-
-func draw(grid *gameGrid) (error) {
-	drawCounter++
-
+func draw(grid *gameGrid) error {
 	var outerWidth, outerHeight int = termbox.Size()
 
 	boardWidth := gridWidth * gridPieceWidth
@@ -71,8 +69,8 @@ func draw(grid *gameGrid) (error) {
 		fmt.Sprintf("%vx%v board, %vx%v screen", boardWidth, boardHeight, outerWidth, outerHeight))
 
 	// board
-	for x := boardStartX; x < boardStartX + boardWidth; x++ {
-		for y := boardStartY; y < boardStartY + boardHeight; y++ {
+	for x := boardStartX; x < boardStartX+boardWidth; x++ {
+		for y := boardStartY; y < boardStartY+boardHeight; y++ {
 			termbox.SetCell(x, y, ' ', boardBackgroundColor, boardBackgroundColor)
 		}
 	}
@@ -83,11 +81,6 @@ func draw(grid *gameGrid) (error) {
 		startScreenY := boardStartY + (gridY * gridPieceHeight)
 		endScreenX := startScreenX + gridPieceWidth - 1
 		endScreenY := startScreenY + gridPieceHeight - 1
-		if drawCounter == 1 {
-			logOnExit(fmt.Sprintf("%v,%v from %v,%v to %v,%v",
-				gridX, gridY, startScreenX, startScreenY,
-				endScreenX, endScreenY))
-		}
 		for screenX := startScreenX; screenX <= endScreenX; screenX++ {
 			for screenY := startScreenY; screenY <= endScreenY; screenY++ {
 				termbox.SetCell(screenX, screenY, 'X', color, color)
@@ -97,9 +90,6 @@ func draw(grid *gameGrid) (error) {
 
 	for x, row := range *grid {
 		for y, r := range row {
-			if drawCounter == 1 {
-				logOnExit(fmt.Sprintf("%v,%v: [%s]", x, y, string(r)))
-			}
 			if r != ' ' {
 				drawGridPiece(r, x, y, mapColor(r))
 			}
@@ -124,23 +114,41 @@ func initGrid(grid *gameGrid) {
 	// layout in human-readable format.
 	// rows here don't have to be as long as actual grid (but can't be longer).
 	// X's indicate a piece, space indicates no piece.
-	layout := []string{
-		"BRG",
+	readableGrid := []string{
+		"GRB           BRG",
 		"",
-		"G R B",
-		"GRB",
-
-		//"  X  X  X  ",
-		//"            ",
-		//" B  R  B  R",
+		"       BRG       ",
+		"",
+		"G R B G R B G R B",
+		"",
+		"       GRB       ",
+		"",
+		"GRB           BRG",
 	}
 
-	for y, line := range layout {
+	// center the human-readable grid on the full grid
+
+	padWidth, padHeight := func() (int, int) {
+		height := len(readableGrid)
+		width := 0
+		for _, line := range readableGrid {
+			if len(line) > width {
+				width = len(line)
+			}
+		}
+		if width > gridWidth || height > gridHeight {
+			panic("Defined grid is too large")
+		}
+		return int(math.Floor(float64(gridWidth - width) / 2)),
+			int(math.Floor(float64(gridHeight - height) / 2))
+	}()
+
+	for y, line := range readableGrid {
 		for x, r := range line {
 			if r != ' ' {
-				(*grid)[x][y] = r
+				(*grid)[x+padWidth][y+padHeight] = r
 			} else {
-				(*grid)[x][y] = ' '
+				(*grid)[x+padWidth][y+padHeight] = ' '
 			}
 		}
 	}
@@ -150,7 +158,9 @@ func main() {
 	grid := newGameGrid(gridWidth, gridHeight)
 	initGrid(grid)
 
-	err := termbox.Init()
+	var err error // ?? what is the right way to keep assigning `err` ??
+
+	err = termbox.Init()
 	if err != nil {
 		panic(err)
 	}
@@ -167,7 +177,10 @@ func main() {
 		}
 	}()
 
-	draw(grid)
+	err = draw(grid)
+	if err != nil {
+		panic(err)
+	}
 
 loop:
 	for {
