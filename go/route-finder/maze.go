@@ -6,13 +6,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/nsf/termbox-go"
-	"math"
 	"time"
 )
 
 const (
-	gridWidth  = 30
-	gridHeight = 15
 	// cells are taller than they are wide, compensate
 	gridPieceWidth  = 4
 	gridPieceHeight = 2
@@ -20,15 +17,15 @@ const (
 	windowBackgroundColor = termbox.ColorWhite
 	boardBackgroundColor  = termbox.ColorBlack
 )
+var gridWidth, gridHeight int
 
 var exitLogBuffer bytes.Buffer
-
 func logOnExit(s string) {
 	exitLogBuffer.WriteString(s)
 	exitLogBuffer.WriteString("\n")
 }
 
-func printStr(x, y int, fg, bg termbox.Attribute, msg string) {
+func drawText(x, y int, fg, bg termbox.Attribute, msg string) {
 	for _, c := range msg {
 		termbox.SetCell(x, y, c, fg, bg)
 		x += 1
@@ -37,9 +34,9 @@ func printStr(x, y int, fg, bg termbox.Attribute, msg string) {
 
 func mapColor(r rune) termbox.Attribute {
 	colorMap := map[rune]termbox.Attribute{
-		'B': termbox.ColorBlue,
-		'R': termbox.ColorRed,
-		'G': termbox.ColorGreen,
+		'X': termbox.ColorBlue,		// wall
+		'S': termbox.ColorRed,		// start
+		'F': termbox.ColorGreen,	// finish
 	}
 	color, exists := colorMap[r]
 	if exists == true {
@@ -47,6 +44,54 @@ func mapColor(r rune) termbox.Attribute {
 	} else {
 		return boardBackgroundColor
 	}
+}
+
+type gameGrid [][]rune
+
+func initGrid() *gameGrid {
+	// layout in human-readable format.
+	// rows here don't have to be as long as actual grid (but can't be longer).
+	// X's indicate a piece, space indicates no piece.
+	readableGrid := []string{
+		"              F               ",
+		"",
+		"XXXXXXXXXXXXXX XXXXXXXXXXXXXXX",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"X                            X",
+		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+	}
+
+	gridHeight = len(readableGrid)
+	for _, line := range readableGrid {
+		if len(line) > gridWidth {
+			gridWidth = len(line)
+		}
+	}
+
+	grid := make(gameGrid, gridWidth)
+	for i := range grid {
+		grid[i] = make([]rune, gridHeight)
+	}
+
+	for y, line := range readableGrid {
+		for x, r := range line {
+			if r != ' ' {
+				grid[x][y] = r
+			} else {
+				grid[x][y] = ' '
+			}
+		}
+	}
+	return &grid
 }
 
 func draw(grid *gameGrid) {
@@ -65,7 +110,7 @@ func draw(grid *gameGrid) {
 
 	termbox.Clear(windowBackgroundColor, windowBackgroundColor)
 
-	printStr(0, 0, boardBackgroundColor, windowBackgroundColor,
+	drawText(0, 0, boardBackgroundColor, windowBackgroundColor,
 		fmt.Sprintf("%vx%v board, %vx%v screen", boardWidth, boardHeight, outerWidth, outerHeight))
 
 	// board
@@ -83,7 +128,7 @@ func draw(grid *gameGrid) {
 		endScreenY := startScreenY + gridPieceHeight - 1
 		for screenX := startScreenX; screenX <= endScreenX; screenX++ {
 			for screenY := startScreenY; screenY <= endScreenY; screenY++ {
-				termbox.SetCell(screenX, screenY, 'X', color, color)
+				termbox.SetCell(screenX, screenY, ' ', color, color)
 			}
 		}
 	}
@@ -99,63 +144,8 @@ func draw(grid *gameGrid) {
 	termbox.Flush()
 }
 
-type gameGrid [][]rune
-
-func newGameGrid(width, height int) *gameGrid {
-	grid := make(gameGrid, width)
-	for i := range grid {
-		grid[i] = make([]rune, height)
-	}
-	return &grid
-}
-
-func initGrid(grid *gameGrid) {
-	// layout in human-readable format.
-	// rows here don't have to be as long as actual grid (but can't be longer).
-	// X's indicate a piece, space indicates no piece.
-	readableGrid := []string{
-		"GRB           BRG",
-		"",
-		"       BRG       ",
-		"",
-		"G R B G R B G R B",
-		"",
-		"       GRB       ",
-		"",
-		"GRB           BRG",
-	}
-
-	// center the human-readable grid on the full grid
-
-	padWidth, padHeight := func() (int, int) {
-		height := len(readableGrid)
-		width := 0
-		for _, line := range readableGrid {
-			if len(line) > width {
-				width = len(line)
-			}
-		}
-		if width > gridWidth || height > gridHeight {
-			panic("Defined grid is too large")
-		}
-		return int(math.Floor(float64(gridWidth - width) / 2)),
-			int(math.Floor(float64(gridHeight - height) / 2))
-	}()
-
-	for y, line := range readableGrid {
-		for x, r := range line {
-			if r != ' ' {
-				(*grid)[x+padWidth][y+padHeight] = r
-			} else {
-				(*grid)[x+padWidth][y+padHeight] = ' '
-			}
-		}
-	}
-}
-
 func main() {
-	grid := newGameGrid(gridWidth, gridHeight)
-	initGrid(grid)
+	grid := initGrid()
 
 	var err error // ?? what is the right way to keep assigning `err` ??
 
