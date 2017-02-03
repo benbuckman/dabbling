@@ -17,9 +17,10 @@ const (
 	windowBackgroundColor = termbox.ColorWhite
 	boardBackgroundColor  = termbox.ColorBlack
 )
+
 var gridWidth, gridHeight int
 
-type square struct {
+type gridSquare struct {
 	// self-awareness/bidirectional ref of position on the grid
 	posX, posY int
 
@@ -29,6 +30,7 @@ type square struct {
 }
 
 var exitLogBuffer bytes.Buffer
+
 func logOnExit(s string) {
 	exitLogBuffer.WriteString(s)
 	exitLogBuffer.WriteString("\n")
@@ -43,9 +45,9 @@ func drawText(x, y int, fg, bg termbox.Attribute, msg string) {
 
 func mapColor(r rune) termbox.Attribute {
 	colorMap := map[rune]termbox.Attribute{
-		'X': termbox.ColorBlue,		// wall
-		'S': termbox.ColorRed,		// start
-		'F': termbox.ColorGreen,	// finish
+		'X': termbox.ColorBlue,  // wall
+		'S': termbox.ColorRed,   // start
+		'F': termbox.ColorGreen, // finish
 
 		'Y': termbox.ColorYellow,
 	}
@@ -57,7 +59,7 @@ func mapColor(r rune) termbox.Attribute {
 	}
 }
 
-type gameGrid [][]square
+type gameGrid [][]gridSquare
 
 func initialLayout() *[]string {
 	// layout in human-readable format.
@@ -83,12 +85,12 @@ func initialLayout() *[]string {
 
 // Every spot in the grid should have one.
 func addSquareToGrid(gridPtr *gameGrid, posX int, posY int, marker rune) {
-	s := square{
+	square := gridSquare{
 		marker: marker,
-		posX: posX,
-		posY: posY,
+		posX:   posX,
+		posY:   posY,
 	}
-	(*gridPtr)[posX][posY] = s
+	(*gridPtr)[posX][posY] = square
 }
 
 func initGrid() *gameGrid {
@@ -103,7 +105,7 @@ func initGrid() *gameGrid {
 
 	grid := make(gameGrid, gridWidth)
 	for i := range grid {
-		grid[i] = make([]square, gridHeight)
+		grid[i] = make([]gridSquare, gridHeight)
 	}
 
 	for y, line := range readableGrid {
@@ -141,10 +143,10 @@ func draw(gridPtr *gameGrid) {
 	}
 
 	// grid squares
-	drawGridPiece := func(s square) {
-		color := mapColor(s.marker)
-		startScreenX := boardStartX + (s.posX * gridPieceWidth)
-		startScreenY := boardStartY + (s.posY * gridPieceHeight)
+	drawGridPiece := func(square gridSquare) {
+		color := mapColor(square.marker)
+		startScreenX := boardStartX + (square.posX * gridPieceWidth)
+		startScreenY := boardStartY + (square.posY * gridPieceHeight)
 		endScreenX := startScreenX + gridPieceWidth - 1
 		endScreenY := startScreenY + gridPieceHeight - 1
 		for screenX := startScreenX; screenX <= endScreenX; screenX++ {
@@ -155,9 +157,9 @@ func draw(gridPtr *gameGrid) {
 	}
 
 	for _, row := range *gridPtr {
-		for _, s := range row {
-			if s.marker != ' ' {
-				drawGridPiece(s)
+		for _, square := range row {
+			if square.marker != ' ' {
+				drawGridPiece(square)
 			}
 		}
 	}
@@ -165,49 +167,60 @@ func draw(gridPtr *gameGrid) {
 	termbox.Flush()
 }
 
-// Return array of up to 8 pointers to surrounding squares.
-func getSurroundingSpaces(gridPtr *gameGrid, sPtr *square) ([]*square) {
+// Return array of up to 8 pointers to surrounding *empty* squares.
+func getSurroundingSpaces(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
 	posX, posY := (*sPtr).posX, (*sPtr).posY
 	/*
-	1 2 3
-	4 X 5
-	6 7 8
+		1 2 3
+		4 X 5
+		6 7 8
 
-	1 = x-1, y-1
-	2 = x,   y-1
-	3 = x+1, y-1
-	...
+		1 = x-1, y-1
+		2 = x,   y-1
+		3 = x+1, y-1
+		...
 	*/
-	var surrounding = []*square{}
+	var surrounding = []*gridSquare{}
 
-	for y := posY -1; y <= posY + 1; y++ {
-		for x := posX - 1; x <= posX + 1; x++ {
-			if x >= 0 && y >= 0 && x < gridWidth && y < gridHeight && !(x == posX && y == posY) {
-				// TODO simplify pointer syntax
-				surrounding = append(surrounding, &((*gridPtr)[x][y]))
+	getValidEmptySquare := func(x, y int) (*gridSquare) {
+		if x >= 0 && y >= 0 &&
+			x < gridWidth && y < gridHeight &&
+			!(x == posX && y == posY) {
+				otherSquarePtr := &(*gridPtr)[x][y]
+				if (*otherSquarePtr).marker == ' ' {
+					return otherSquarePtr
+				}
+		}
+		return nil
+	}
+
+	for y := posY - 1; y <= posY+1; y++ {
+		for x := posX - 1; x <= posX+1; x++ {
+			otherSquarePtr := getValidEmptySquare(x, y)
+			if otherSquarePtr != nil {
+				surrounding = append(surrounding, otherSquarePtr)
 			}
 		}
 	}
 
 	logOnExit(fmt.Sprintf("surrounding pieces for %v,%v:", posX, posY))
-	for _, s := range surrounding {
-		logOnExit(fmt.Sprintf("- %v,%v", (*s).posX, (*s).posY))
+	for _, square := range surrounding {
+		logOnExit(fmt.Sprintf("- %v,%v", (*square).posX, (*square).posY))
 	}
 
 	return surrounding
 }
 
-func highlightSpaces(gridPtr *gameGrid, ss []*square) {
+func highlightSpaces(ss []*gridSquare) {
 	for _, sPtr := range ss {
 		(*sPtr).marker = 'Y'
 	}
 }
 
 func calculateDistancesToExit(gridPtr *gameGrid) {
-	highlightSpaces(gridPtr, getSurroundingSpaces(gridPtr, &((*gridPtr)[0][0])))
-	highlightSpaces(gridPtr, getSurroundingSpaces(gridPtr, &((*gridPtr)[5][5])))
+	highlightSpaces(getSurroundingSpaces(gridPtr, &((*gridPtr)[0][0])))
+	highlightSpaces(getSurroundingSpaces(gridPtr, &((*gridPtr)[7][5])))
 }
-
 
 func main() {
 	gridPtr := initGrid()
