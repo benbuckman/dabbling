@@ -19,6 +19,15 @@ const (
 )
 var gridWidth, gridHeight int
 
+type square struct {
+	// self-awareness/bidirectional ref of position on the grid
+	posX, posY int
+
+	// the type/color of the square, coded by letter (see `mapColor`)
+	// TODO make an enum of allowed colors
+	marker rune
+}
+
 var exitLogBuffer bytes.Buffer
 func logOnExit(s string) {
 	exitLogBuffer.WriteString(s)
@@ -46,7 +55,7 @@ func mapColor(r rune) termbox.Attribute {
 	}
 }
 
-type gameGrid [][]rune
+type gameGrid [][]square
 
 func initialLayout() *[]string {
 	// layout in human-readable format.
@@ -70,6 +79,16 @@ func initialLayout() *[]string {
 	}
 }
 
+// Every spot in the grid should have one.
+func addSquareToGrid(grid *gameGrid, posX int, posY int, marker rune) {
+	s := square{
+		marker: marker,
+		posX: posX,
+		posY: posY,
+	}
+	(*grid)[posX][posY] = s
+}
+
 func initGrid() *gameGrid {
 	readableGrid := *initialLayout()
 
@@ -82,16 +101,12 @@ func initGrid() *gameGrid {
 
 	grid := make(gameGrid, gridWidth)
 	for i := range grid {
-		grid[i] = make([]rune, gridHeight)
+		grid[i] = make([]square, gridHeight)
 	}
 
 	for y, line := range readableGrid {
 		for x, r := range line {
-			if r != ' ' {
-				grid[x][y] = r
-			} else {
-				grid[x][y] = ' '
-			}
+			addSquareToGrid(&grid, x, y, r)
 		}
 	}
 	return &grid
@@ -123,10 +138,11 @@ func draw(grid *gameGrid) {
 		}
 	}
 
-	// grid pieces
-	drawGridPiece := func(r rune, gridX, gridY int, color termbox.Attribute) {
-		startScreenX := boardStartX + (gridX * gridPieceWidth)
-		startScreenY := boardStartY + (gridY * gridPieceHeight)
+	// grid squares
+	drawGridPiece := func(s square) {
+		color := mapColor(s.marker)
+		startScreenX := boardStartX + (s.posX * gridPieceWidth)
+		startScreenY := boardStartY + (s.posY * gridPieceHeight)
 		endScreenX := startScreenX + gridPieceWidth - 1
 		endScreenY := startScreenY + gridPieceHeight - 1
 		for screenX := startScreenX; screenX <= endScreenX; screenX++ {
@@ -136,10 +152,10 @@ func draw(grid *gameGrid) {
 		}
 	}
 
-	for x, row := range *grid {
-		for y, r := range row {
-			if r != ' ' {
-				drawGridPiece(r, x, y, mapColor(r))
+	for _, row := range *grid {
+		for _, s := range row {
+			if s.marker != ' ' {
+				drawGridPiece(s)
 			}
 		}
 	}

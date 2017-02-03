@@ -142,16 +142,14 @@ func main() {
 		return &b
 	}
 
-	// TODO understand how to assign directly to charboard
-	charboardPtr := getEmptyCharboard(10, 5)
-	//charboard := *charboardPtr
-	for _, r := range *charboardPtr {
+	charboard := *getEmptyCharboard(10, 5)
+	for _, r := range charboard {
 		for j := range r {
 			r[j] = 'X'
 		}
 	}
 
-	fmt.Printf("%v", charboardPtr)
+	fmt.Printf("%v", charboard)
 
 	fmt.Println("---------------------------------")
 
@@ -175,6 +173,20 @@ func main() {
 		flooredNumber := math.Floor(float64(9) / 5)
 		fmt.Printf("Floor: %v (%T)\n", flooredNumber, flooredNumber)
 	}()
+
+	fmt.Println("---------------------------------")
+
+	// pointer to array element?
+	arr := []int{1,2,3,4,5,6}
+	elPtr := &arr[2]
+	*elPtr = 10
+	fmt.Println(arr)
+
+	elPtrs := []*int{&arr[3], &arr[4]}
+	for _, elPtr = range elPtrs {
+		*elPtr = 20
+	}
+	fmt.Println(arr)
 
 	fmt.Println("---------------------------------")
 
