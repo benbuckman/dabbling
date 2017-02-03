@@ -46,6 +46,8 @@ func mapColor(r rune) termbox.Attribute {
 		'X': termbox.ColorBlue,		// wall
 		'S': termbox.ColorRed,		// start
 		'F': termbox.ColorGreen,	// finish
+
+		'Y': termbox.ColorYellow,
 	}
 	color, exists := colorMap[r]
 	if exists == true {
@@ -80,13 +82,13 @@ func initialLayout() *[]string {
 }
 
 // Every spot in the grid should have one.
-func addSquareToGrid(grid *gameGrid, posX int, posY int, marker rune) {
+func addSquareToGrid(gridPtr *gameGrid, posX int, posY int, marker rune) {
 	s := square{
 		marker: marker,
 		posX: posX,
 		posY: posY,
 	}
-	(*grid)[posX][posY] = s
+	(*gridPtr)[posX][posY] = s
 }
 
 func initGrid() *gameGrid {
@@ -112,7 +114,7 @@ func initGrid() *gameGrid {
 	return &grid
 }
 
-func draw(grid *gameGrid) {
+func draw(gridPtr *gameGrid) {
 	var outerWidth, outerHeight int = termbox.Size()
 
 	boardWidth := gridWidth * gridPieceWidth
@@ -152,7 +154,7 @@ func draw(grid *gameGrid) {
 		}
 	}
 
-	for _, row := range *grid {
+	for _, row := range *gridPtr {
 		for _, s := range row {
 			if s.marker != ' ' {
 				drawGridPiece(s)
@@ -163,8 +165,52 @@ func draw(grid *gameGrid) {
 	termbox.Flush()
 }
 
+// Return array of up to 8 pointers to surrounding squares.
+func getSurroundingSpaces(gridPtr *gameGrid, sPtr *square) ([]*square) {
+	posX, posY := (*sPtr).posX, (*sPtr).posY
+	/*
+	1 2 3
+	4 X 5
+	6 7 8
+
+	1 = x-1, y-1
+	2 = x,   y-1
+	3 = x+1, y-1
+	...
+	*/
+	var surrounding = []*square{}
+
+	for y := posY -1; y <= posY + 1; y++ {
+		for x := posX - 1; x <= posX + 1; x++ {
+			if x >= 0 && y >= 0 && x < gridWidth && y < gridHeight && !(x == posX && y == posY) {
+				// TODO simplify pointer syntax
+				surrounding = append(surrounding, &((*gridPtr)[x][y]))
+			}
+		}
+	}
+
+	logOnExit(fmt.Sprintf("surrounding pieces for %v,%v:", posX, posY))
+	for _, s := range surrounding {
+		logOnExit(fmt.Sprintf("- %v,%v", (*s).posX, (*s).posY))
+	}
+
+	return surrounding
+}
+
+func highlightSpaces(gridPtr *gameGrid, ss []*square) {
+	for _, sPtr := range ss {
+		(*sPtr).marker = 'Y'
+	}
+}
+
+func calculateDistancesToExit(gridPtr *gameGrid) {
+	highlightSpaces(gridPtr, getSurroundingSpaces(gridPtr, &((*gridPtr)[0][0])))
+	highlightSpaces(gridPtr, getSurroundingSpaces(gridPtr, &((*gridPtr)[5][5])))
+}
+
+
 func main() {
-	grid := initGrid()
+	gridPtr := initGrid()
 
 	var err error // ?? what is the right way to keep assigning `err` ??
 
@@ -185,7 +231,9 @@ func main() {
 		}
 	}()
 
-	draw(grid)
+	draw(gridPtr)
+
+	calculateDistancesToExit(gridPtr)
 
 loop:
 	for {
@@ -195,7 +243,7 @@ loop:
 				break loop
 			}
 		default:
-			draw(grid)
+			draw(gridPtr)
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
