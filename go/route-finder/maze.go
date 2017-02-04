@@ -205,47 +205,38 @@ func draw(gridPtr *gameGrid) {
 	drawnOnce = true
 }
 
-// Return array of up to 8 pointers to adjacent *empty* squares.
-func getAdjacentSquares(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
-	posX, posY := (*sPtr).posX, (*sPtr).posY
-	/*
-		1 2 3
-		4 0 5
-		6 7 8
+// Return array of up to 4 pointers to adjacent *empty* squares,
+// reflecting where a piece can "move" to - up/down/right/left,
+// not diagonal!
+func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare {
+	posX, posY := (*squarePtr).posX, (*squarePtr).posY
 
-		1 = x-1, y-1
-		2 = x,   y-1
-		3 = x+1, y-1
-		...
-	*/
 	var adjacent = []*gridSquare{}
 
-	getValidEmptySquare := func(x, y int) (*gridSquare) {
-		if x >= 0 && y >= 0 &&
-			x < gridWidth && y < gridHeight &&
-			!(x == posX && y == posY) {
-				otherSquarePtr := &(*gridPtr)[x][y]
-				if (*otherSquarePtr).marker == ' ' {
-					return otherSquarePtr
-				}
-		}
-		return nil
-	}
-
-	for y := posY - 1; y <= posY+1; y++ {
-		for x := posX - 1; x <= posX+1; x++ {
-			otherSquarePtr := getValidEmptySquare(x, y)
-			if otherSquarePtr != nil {
-				adjacent = append(adjacent, otherSquarePtr)
+	addIfValidAndEmpty := func(x, y int) {
+		if x >= 0 && y >= 0 && x < gridWidth && y < gridHeight {
+			squarePtr := &(*gridPtr)[x][y]
+			if (*squarePtr).marker == ' ' {
+				adjacent = append(adjacent, squarePtr)
 			}
 		}
 	}
+	/*
+	  1
+	2 0 3
+	  4
+	*/
+	addIfValidAndEmpty(posX - 1, posY)
+	addIfValidAndEmpty(posX - 1, posY - 1)
+	addIfValidAndEmpty(posX + 1, posY)
+	addIfValidAndEmpty(posX, posY + 1)
+
 	return adjacent
 }
 
 //func highlightSpaces(ss []*gridSquare) {
-//	for _, sPtr := range ss {
-//		(*sPtr).marker = 'Y'
+//	for _, squarePtr := range ss {
+//		(*squarePtr).marker = 'Y'
 //	}
 //}
 
