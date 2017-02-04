@@ -20,6 +20,8 @@ const (
 
 var gridWidth, gridHeight int
 
+// TODO change `int`s to smaller types?
+
 type gridSquare struct {
 	// self-awareness/bidirectional ref of position on the grid
 	posX, posY int
@@ -27,6 +29,9 @@ type gridSquare struct {
 	// the type/color of the square, coded by letter (see `mapColor`)
 	// TODO make an enum of allowed colors
 	marker rune
+
+	// calculated distance from end square
+	distance int
 }
 
 var exitLogBuffer bytes.Buffer
@@ -36,18 +41,16 @@ func logOnExit(s string) {
 	exitLogBuffer.WriteString("\n")
 }
 
-func drawText(x, y int, fg, bg termbox.Attribute, msg string) {
-	for _, c := range msg {
-		termbox.SetCell(x, y, c, fg, bg)
-		x += 1
-	}
+var drawTextQueue []string
+func drawText(msg string) {
+	drawTextQueue = append(drawTextQueue, msg)
 }
 
 func mapColor(r rune) termbox.Attribute {
 	colorMap := map[rune]termbox.Attribute{
 		'X': termbox.ColorBlue,  // wall
 		'S': termbox.ColorRed,   // start
-		'F': termbox.ColorGreen, // finish
+		'E': termbox.ColorGreen, // end
 
 		'Y': termbox.ColorYellow,
 	}
@@ -65,7 +68,7 @@ func initialLayout() *[]string {
 	// layout in human-readable format.
 	// see `mapColor()` for allowed letters.
 	return &[]string{
-		"           F           ",
+		"           E           ",
 		"                       ",
 		"XXXXXXXXXXX XXXXXXXXXXX",
 		"X                     X",
@@ -89,6 +92,7 @@ func addSquareToGrid(gridPtr *gameGrid, posX int, posY int, marker rune) {
 		marker: marker,
 		posX:   posX,
 		posY:   posY,
+		distance: -1,	// unknown
 	}
 	(*gridPtr)[posX][posY] = square
 }
@@ -116,6 +120,7 @@ func initGrid() *gameGrid {
 	return &grid
 }
 
+var drawnOnce bool = false
 func draw(gridPtr *gameGrid) {
 	var outerWidth, outerHeight int = termbox.Size()
 
@@ -132,8 +137,9 @@ func draw(gridPtr *gameGrid) {
 
 	termbox.Clear(windowBackgroundColor, windowBackgroundColor)
 
-	drawText(0, 0, boardBackgroundColor, windowBackgroundColor,
-		fmt.Sprintf("%vx%v board, %vx%v screen", boardWidth, boardHeight, outerWidth, outerHeight))
+	if drawnOnce == false {
+		drawText(fmt.Sprintf("%vx%v board, %vx%v screen", boardWidth, boardHeight, outerWidth, outerHeight))
+	}
 
 	// board
 	for x := boardStartX; x < boardStartX+boardWidth; x++ {
@@ -142,13 +148,19 @@ func draw(gridPtr *gameGrid) {
 		}
 	}
 
+	getSquareCorners := func(square *gridSquare) (startScreenX, startScreenY, endScreenX, endScreenY int) {
+		startScreenX = boardStartX + ((*square).posX * gridPieceWidth)
+		startScreenY = boardStartY + ((*square).posY * gridPieceHeight)
+		endScreenX = startScreenX + gridPieceWidth - 1
+		endScreenY = startScreenY + gridPieceHeight - 1
+		return
+	}
+
 	// grid squares
-	drawGridPiece := func(square gridSquare) {
-		color := mapColor(square.marker)
-		startScreenX := boardStartX + (square.posX * gridPieceWidth)
-		startScreenY := boardStartY + (square.posY * gridPieceHeight)
-		endScreenX := startScreenX + gridPieceWidth - 1
-		endScreenY := startScreenY + gridPieceHeight - 1
+	drawGridPiece := func(square *gridSquare) {
+		// draw colored box
+		startScreenX, startScreenY, endScreenX, endScreenY := getSquareCorners(square)
+		color := mapColor((*square).marker)
 		for screenX := startScreenX; screenX <= endScreenX; screenX++ {
 			for screenY := startScreenY; screenY <= endScreenY; screenY++ {
 				termbox.SetCell(screenX, screenY, ' ', color, color)
@@ -156,23 +168,49 @@ func draw(gridPtr *gameGrid) {
 		}
 	}
 
+	drawEmptySpace := func(square *gridSquare) {
+		// overlay distance
+		startScreenX, startScreenY, _, _ := getSquareCorners(square)
+		var distanceStr string
+		if (*square).distance != -1 {
+			distanceStr = fmt.Sprintf("%v", (*square).distance)
+		} else {
+			distanceStr = "-"
+		}
+		for i, r := range distanceStr {
+			termbox.SetCell(startScreenX + i, startScreenY, r, termbox.ColorWhite, boardBackgroundColor)
+		}
+	}
+
 	for _, row := range *gridPtr {
 		for _, square := range row {
-			if square.marker != ' ' {
-				drawGridPiece(square)
+			if square.marker == ' ' {
+				// empty space
+				drawEmptySpace(&square)
+			} else {
+				// wall or piece
+				drawGridPiece(&square)
 			}
 		}
 	}
 
+	// sidebar text (logging)
+	for y, s := range drawTextQueue {
+		for x, c := range s {
+			termbox.SetCell(x, y, c, boardBackgroundColor, windowBackgroundColor)
+		}
+	}
+
 	termbox.Flush()
+	drawnOnce = true
 }
 
-// Return array of up to 8 pointers to surrounding *empty* squares.
-func getSurroundingSpaces(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
+// Return array of up to 8 pointers to adjacent *empty* squares.
+func getAdjacentSquares(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
 	posX, posY := (*sPtr).posX, (*sPtr).posY
 	/*
 		1 2 3
-		4 X 5
+		4 0 5
 		6 7 8
 
 		1 = x-1, y-1
@@ -180,7 +218,7 @@ func getSurroundingSpaces(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
 		3 = x+1, y-1
 		...
 	*/
-	var surrounding = []*gridSquare{}
+	var adjacent = []*gridSquare{}
 
 	getValidEmptySquare := func(x, y int) (*gridSquare) {
 		if x >= 0 && y >= 0 &&
@@ -198,29 +236,111 @@ func getSurroundingSpaces(gridPtr *gameGrid, sPtr *gridSquare) []*gridSquare {
 		for x := posX - 1; x <= posX+1; x++ {
 			otherSquarePtr := getValidEmptySquare(x, y)
 			if otherSquarePtr != nil {
-				surrounding = append(surrounding, otherSquarePtr)
+				adjacent = append(adjacent, otherSquarePtr)
 			}
 		}
 	}
-
-	logOnExit(fmt.Sprintf("surrounding pieces for %v,%v:", posX, posY))
-	for _, square := range surrounding {
-		logOnExit(fmt.Sprintf("- %v,%v", (*square).posX, (*square).posY))
-	}
-
-	return surrounding
+	return adjacent
 }
 
-func highlightSpaces(ss []*gridSquare) {
-	for _, sPtr := range ss {
-		(*sPtr).marker = 'Y'
+//func highlightSpaces(ss []*gridSquare) {
+//	for _, sPtr := range ss {
+//		(*sPtr).marker = 'Y'
+//	}
+//}
+
+// Start indicated by 'S', end by 'E'. Should be only 1 of each.
+func findMazeStartAndEnd(gridPtr *gameGrid) (startPtr, endPtr *gridSquare) {
+	for _, row := range *gridPtr {
+		for _, square  := range row {
+			// need local var so
+			square := square
+
+			switch square.marker {
+			case 'S':
+				if startPtr != nil {
+					panic("Too many start positions ('S') marked!")
+				}
+				startPtr = &square
+				drawText(fmt.Sprintf("Found start at %v,%v (dist:%v)", square.posX, square.posY, square.distance))
+
+			case 'E':
+				if endPtr != nil {
+					panic("Too many end positions ('E') marked!")
+				}
+				endPtr = &square
+				drawText(fmt.Sprintf("Found end at %v,%v", square.posX, square.posY))
+			}
+		}
 	}
+	if startPtr == nil {
+		panic("Board is missing start position ('S')!")
+	}
+	if endPtr == nil {
+		panic("Board is missing end position ('E')!")
+	}
+	logOnExit(fmt.Sprintf("start pos: %vx%v, end pos: %vx%v",
+		(*startPtr).posX, (*startPtr).posY, (*endPtr).posX, (*endPtr).posY))
+	return
 }
 
 func calculateDistancesToExit(gridPtr *gameGrid) {
-	highlightSpaces(getSurroundingSpaces(gridPtr, &((*gridPtr)[0][0])))
-	highlightSpaces(getSurroundingSpaces(gridPtr, &((*gridPtr)[7][5])))
+	// start at end square
+	// get its adjacent squares
+	// assign a distance (1) to each of them
+	// and add them to queue
+	// shift next queued:
+	//	get its adjacent squares
+	//	assign a distance to each of them
+	//	and add them to queue
+	// shift next queued ...
+
+	queue := make([]*gridSquare, 0)
+
+	// TODO can this be simplified to `assignNextSquare` ?
+
+	var assignAndQueueAdjacentSquares func(squarePtr *gridSquare)
+	assignAndQueueAdjacentSquares = func(squarePtr *gridSquare) {
+		distance := (*squarePtr).distance + 1
+		adjacentPtrs := getAdjacentSquares(gridPtr, squarePtr)
+
+		logOnExit(fmt.Sprintf("assigning to %v,%v: distance=%v, %v adjacent",
+			(*squarePtr).posX, (*squarePtr).posY, distance, len(adjacentPtrs)))
+
+		for _, adjacentSquarePtr := range adjacentPtrs {
+			// ignore if distance is already known,
+			// unless new distance is shorter than previously-calculated distance.
+			// (b/c might come from multiple directions)
+			if (*adjacentSquarePtr).distance == -1 ||
+				((*adjacentSquarePtr).distance > -1 && distance < (*adjacentSquarePtr).distance) {
+
+				logOnExit(fmt.Sprintf("at %v,%v, new distance %v (was %v)",
+					(*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY,
+					distance, (*adjacentSquarePtr).distance))
+
+				(*adjacentSquarePtr).distance = distance
+				queue = append(queue, adjacentSquarePtr)
+				logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
+			}
+		}
+
+		logOnExit(fmt.Sprintf("After %v,%v, queue has %v", (*squarePtr).posX, (*squarePtr).posX, len(queue)))
+
+		if len(queue) > 0 {
+			// shift
+			nextSquarePtr := queue[0]
+			logOnExit(fmt.Sprintf("shifted %v,%v", (*nextSquarePtr).posX, (*nextSquarePtr).posY))
+			queue = queue[1:]
+			assignAndQueueAdjacentSquares(nextSquarePtr)
+		}
+
+	}
+
+	_, endPtr := findMazeStartAndEnd(gridPtr)
+	(*endPtr).distance = 0
+	assignAndQueueAdjacentSquares(endPtr)
 }
+
 
 func main() {
 	gridPtr := initGrid()
@@ -234,7 +354,7 @@ func main() {
 
 	defer func() {
 		termbox.Close()
-		fmt.Printf("log:\n%s\n", exitLogBuffer.String())
+		fmt.Println(exitLogBuffer.String())
 	}()
 
 	event_queue := make(chan termbox.Event)

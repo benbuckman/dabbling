@@ -122,15 +122,46 @@ func main() {
 
 	fmt.Println("---------------------------------")
 
-	// "shift" an array
-	nums := []int{}
-	for i := 0; i < 10; i++ {
-		nums = append(nums, i)
-	}
-	for len(nums) > 0 {
-		nums = nums[1:]
+	func() {
+		// "shift" an array
+		nums := []int{}
+		for i := 0; i < 10; i++ {
+			nums = append(nums, i)
+		}
+		for len(nums) > 0 {
+			nums = nums[1:]
+			fmt.Println(nums)
+		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	func() {
+		// "pop" an array
+		// TODO is there a simpler way to do this??
+		nums := []int{}
+		for i := 1; i <= 10; i++ {
+			nums = append(nums, i)
+		}
 		fmt.Println(nums)
-	}
+
+		popNum := func() (int, bool) {
+			if len(nums) == 0 {
+				return 0, false
+			}
+			last := nums[len(nums) - 1]
+			nums = nums[:len(nums) - 1]	// ??
+			return last, true
+		}
+
+		for {
+			n, exists := popNum()
+			if exists == false {
+				break
+			}
+			fmt.Printf("popped %v, remaining: %v\n", n, nums)
+		}
+	}()
 
 	fmt.Println("---------------------------------")
 
@@ -187,6 +218,10 @@ func main() {
 		*elPtr = 20
 	}
 	fmt.Println(arr)
+
+	fmt.Println("---------------------------------")
+
+	fmt.Println(fmt.Sprintf("%v", 100))
 
 	fmt.Println("---------------------------------")
 
