@@ -205,7 +205,8 @@ func draw(gridPtr *gameGrid) {
 	drawnOnce = true
 }
 
-// Return array of up to 4 pointers to adjacent *empty* squares,
+// Return array of up to 4 pointers to adjacent squares,
+// including the start and end squares but excluding walls,
 // reflecting where a piece can "move" to - up/down/right/left,
 // not diagonal!
 func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare {
@@ -216,7 +217,7 @@ func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare 
 	addIfValidAndEmpty := func(x, y int) {
 		if x >= 0 && y >= 0 && x < gridWidth && y < gridHeight {
 			squarePtr := &(*gridPtr)[x][y]
-			if (*squarePtr).marker == ' ' {
+			if (*squarePtr).marker != 'X' {
 				adjacent = append(adjacent, squarePtr)
 			}
 		}
@@ -288,6 +289,18 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 
 	queue := make([]*gridSquare, 0)
 
+	startPtr, endPtr := findMazeStartAndEnd(gridPtr)
+
+	countAssignments := 0
+	defer func() {
+		logOnExit(fmt.Sprintf("Made %v distance assignments for %v squares", countAssignments, int(gridWidth * gridHeight)))
+	}()
+
+	assignDistanceToSquare := func(squarePtr *gridSquare, distance int) {
+		countAssignments++
+		(*squarePtr).distance = distance
+	}
+
 	// TODO can this be simplified to `assignNextSquare` ?
 
 	var assignAndQueueAdjacentSquares func(squarePtr *gridSquare)
@@ -299,6 +312,17 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 			(*squarePtr).posX, (*squarePtr).posY, distance, len(adjacentPtrs)))
 
 		for _, adjacentSquarePtr := range adjacentPtrs {
+			logOnExit(fmt.Sprintf("at adjacent square %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
+
+			// if we've reached the starting square, then we've already found the shortest route to the end,
+			// so bail.
+			// - TODO why isn't this pointer comparison working? -
+			//if adjacentSquarePtr == startPtr {
+			if (*adjacentSquarePtr).posX == (*startPtr).posX && (*adjacentSquarePtr).posY == (*startPtr).posY {
+				logOnExit("Found start square, enough navigating!")
+				return
+			}
+
 			// ignore if distance is already known,
 			// unless new distance is shorter than previously-calculated distance.
 			// (b/c might come from multiple directions)
@@ -309,13 +333,16 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 					(*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY,
 					distance, (*adjacentSquarePtr).distance))
 
-				(*adjacentSquarePtr).distance = distance
+				assignDistanceToSquare(adjacentSquarePtr, distance)
+
 				queue = append(queue, adjacentSquarePtr)
 				logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
 			}
 		}
 
 		logOnExit(fmt.Sprintf("After %v,%v, queue has %v", (*squarePtr).posX, (*squarePtr).posX, len(queue)))
+
+		time.Sleep(20 * time.Millisecond)
 
 		if len(queue) > 0 {
 			// shift
@@ -327,8 +354,7 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 
 	}
 
-	_, endPtr := findMazeStartAndEnd(gridPtr)
-	(*endPtr).distance = 0
+	assignDistanceToSquare(endPtr, 0)
 	assignAndQueueAdjacentSquares(endPtr)
 }
 
@@ -357,7 +383,7 @@ func main() {
 
 	draw(gridPtr)
 
-	calculateDistancesToExit(gridPtr)
+	go calculateDistancesToExit(gridPtr)
 
 loop:
 	for {

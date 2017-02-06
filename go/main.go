@@ -225,4 +225,17 @@ func main() {
 
 	fmt.Println("---------------------------------")
 
+	// compare pointers?
+
+	func() {
+		var n int = 1
+		nPtr1 := &n
+		nPtr2 := &n
+		var isEqual bool = (nPtr1 == nPtr2)
+		fmt.Printf("equal pointers? %v\n", isEqual)
+	}()
+
+
+	fmt.Println("---------------------------------")
+
 }
