@@ -1,5 +1,5 @@
 '''
-AWS Lambda function for responding to Slack "Slash command"
+Slack "slash command" bot, via AWS Lambda, serving a random Wikipedia link+blurb.
 
 http://docs.aws.amazon.com/lambda/latest/dg/python-programming-model-handler-types.html
 https://api.slack.com/slash-commands
