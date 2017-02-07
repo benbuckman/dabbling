@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"sort"
 	"time"
-	"math"
 )
 
 // Implement a simple binary search algorithm.
@@ -13,7 +12,7 @@ import (
 // build a random list of 100 numbers from 0..999
 func randomNumbers() ([]int) {
 	var rander *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
-	l := 1000
+	l := 32
 	nums := make([]int, l)
 	for i := 0; i < l; i++ {
 		nums[i] = rander.Intn(1000)
@@ -33,7 +32,7 @@ func binarySearch(nums []int, n int) (ind, iterations int, err error) {
 	var bottom, top int = 0, len(nums) - 1
 	for top >= bottom {
 		iterations++
-		ind = bottom + int(math.Floor(float64((top - bottom) / 2)))	// midpoint
+		ind = bottom + ((top - bottom) / 2)	// midpoint
 		fmt.Printf("%v..(%v)..%v (%v)\n", bottom, ind, top, nums[ind])
 		if nums[ind] == n {
 			return
