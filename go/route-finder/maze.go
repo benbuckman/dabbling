@@ -53,6 +53,7 @@ func mapColor(r rune) termbox.Attribute {
 		'E': termbox.ColorGreen, // end
 
 		'Y': termbox.ColorYellow,
+		'M': termbox.ColorMagenta,
 	}
 	color, exists := colorMap[r]
 	if exists == true {
@@ -223,23 +224,56 @@ func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare 
 		}
 	}
 	/*
-	  1
-	2 0 3
+	  2
+	1 0 3
 	  4
 	*/
 	addIfValidAndEmpty(posX - 1, posY)
-	addIfValidAndEmpty(posX - 1, posY - 1)
+	addIfValidAndEmpty(posX, posY - 1)
 	addIfValidAndEmpty(posX + 1, posY)
 	addIfValidAndEmpty(posX, posY + 1)
 
 	return adjacent
 }
 
-//func highlightSpaces(ss []*gridSquare) {
-//	for _, squarePtr := range ss {
-//		(*squarePtr).marker = 'Y'
-//	}
-//}
+func getAdjacentSquareWithShortestRoute(gridPtr *gameGrid, squarePtr, endPtr *gridSquare) (lowestDistanceSquarePtr *gridSquare) {
+	adjacentSquarePtrs := getAdjacentSquares(gridPtr, squarePtr)
+
+	//tmp
+	origMarkers := make([]rune, 0)
+
+	for _, adjacentSquarePtr := range adjacentSquarePtrs {
+		// tmp - flash the adjacent squares
+		origMarkers = append(origMarkers, (*adjacentSquarePtr).marker)
+		(*adjacentSquarePtr).marker = 'M'
+
+		if areGridSquaresEqual(adjacentSquarePtr, endPtr) {
+			// at the end
+			lowestDistanceSquarePtr = adjacentSquarePtr
+		} else if (*adjacentSquarePtr).distance != -1 &&
+			(lowestDistanceSquarePtr == nil || (*lowestDistanceSquarePtr).distance > (*adjacentSquarePtr).distance) {
+			lowestDistanceSquarePtr = adjacentSquarePtr
+		}
+	}
+
+	// tmp
+	time.Sleep(100 * time.Millisecond)
+	for i, adjacentSquarePtr := range adjacentSquarePtrs {
+		(*adjacentSquarePtr).marker = origMarkers[i]
+	}
+
+	return
+}
+
+func areGridSquaresEqual(squarePtr1, squarePtr2 *gridSquare) bool {
+	// TODO why isn't this pointer comparison working? identical squares should have same pointers :-/
+	//if squarePtr1 == squarePtr2 {
+	if (*squarePtr1).posX == (*squarePtr2).posX && (*squarePtr1).posY == (*squarePtr2).posY {
+		return true
+	} else {
+		return false
+	}
+}
 
 // Start indicated by 'S', end by 'E'. Should be only 1 of each.
 func findMazeStartAndEnd(gridPtr *gameGrid) (startPtr, endPtr *gridSquare) {
@@ -271,12 +305,12 @@ func findMazeStartAndEnd(gridPtr *gameGrid) (startPtr, endPtr *gridSquare) {
 	if endPtr == nil {
 		panic("Board is missing end position ('E')!")
 	}
-	logOnExit(fmt.Sprintf("start pos: %vx%v, end pos: %vx%v",
+	logOnExit(fmt.Sprintf("start pos: %v,%v, end pos: %v,%v",
 		(*startPtr).posX, (*startPtr).posY, (*endPtr).posX, (*endPtr).posY))
 	return
 }
 
-func calculateDistancesToExit(gridPtr *gameGrid) {
+func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 	// start at end square
 	// get its adjacent squares
 	// assign a distance (1) to each of them
@@ -288,8 +322,6 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 	// shift next queued ...
 
 	queue := make([]*gridSquare, 0)
-
-	startPtr, endPtr := findMazeStartAndEnd(gridPtr)
 
 	countAssignments := 0
 	defer func() {
@@ -312,14 +344,12 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 			(*squarePtr).posX, (*squarePtr).posY, distance, len(adjacentPtrs)))
 
 		for _, adjacentSquarePtr := range adjacentPtrs {
-			logOnExit(fmt.Sprintf("at adjacent square %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
+			//logOnExit(fmt.Sprintf("at adjacent square %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
 
 			// if we've reached the starting square, then we've already found the shortest route to the end,
 			// so bail.
-			// - TODO why isn't this pointer comparison working? -
-			//if adjacentSquarePtr == startPtr {
-			if (*adjacentSquarePtr).posX == (*startPtr).posX && (*adjacentSquarePtr).posY == (*startPtr).posY {
-				logOnExit("Found start square, enough navigating!")
+			if areGridSquaresEqual(adjacentSquarePtr, startPtr) {
+				logOnExit("Found start square, enough calculating!")
 				return
 			}
 
@@ -329,25 +359,19 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 			if (*adjacentSquarePtr).distance == -1 ||
 				((*adjacentSquarePtr).distance > -1 && distance < (*adjacentSquarePtr).distance) {
 
-				logOnExit(fmt.Sprintf("at %v,%v, new distance %v (was %v)",
-					(*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY,
-					distance, (*adjacentSquarePtr).distance))
-
 				assignDistanceToSquare(adjacentSquarePtr, distance)
 
 				queue = append(queue, adjacentSquarePtr)
-				logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
+				//logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
 			}
 		}
+		//logOnExit(fmt.Sprintf("After %v,%v, queue has %v", (*squarePtr).posX, (*squarePtr).posX, len(queue)))
 
-		logOnExit(fmt.Sprintf("After %v,%v, queue has %v", (*squarePtr).posX, (*squarePtr).posX, len(queue)))
-
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 		if len(queue) > 0 {
 			// shift
 			nextSquarePtr := queue[0]
-			logOnExit(fmt.Sprintf("shifted %v,%v", (*nextSquarePtr).posX, (*nextSquarePtr).posY))
 			queue = queue[1:]
 			assignAndQueueAdjacentSquares(nextSquarePtr)
 		}
@@ -356,6 +380,50 @@ func calculateDistancesToExit(gridPtr *gameGrid) {
 
 	assignDistanceToSquare(endPtr, 0)
 	assignAndQueueAdjacentSquares(endPtr)
+}
+
+
+func findShortestRoute(gridPtr *gameGrid) {
+	startPtr, endPtr := findMazeStartAndEnd(gridPtr)
+
+	calculateDistancesToExit(gridPtr, startPtr, endPtr)
+
+	logOnExit("Finding route...")
+	var routeSquares []*gridSquare
+	nextSquarePtr := startPtr
+	for {
+		previousSquareCopy := *nextSquarePtr
+
+		//logOnExit(fmt.Sprintf("Finding route, at %v,%v", (*nextSquarePtr).posX, (*nextSquarePtr).posY))
+		routeSquares = append(routeSquares, nextSquarePtr)
+
+		// the end square should have distance 0,
+		// so when we're adjacent to it, it should be the closest/next.
+		if areGridSquaresEqual(nextSquarePtr, endPtr) {
+			drawText(fmt.Sprintf("Found shortest route in %v steps", len(routeSquares)))
+			break
+		}
+
+		nextSquarePtr = getAdjacentSquareWithShortestRoute(gridPtr, nextSquarePtr, endPtr)
+
+		// highlight step in yellow
+		// and un-highlight previous
+		(*gridPtr)[previousSquareCopy.posX][previousSquareCopy.posY].marker = previousSquareCopy.marker
+		(*nextSquarePtr).marker = 'Y'
+
+		logOnExit(fmt.Sprintf("-> %v,%v (dist %v)",
+			(*nextSquarePtr).posX, (*nextSquarePtr).posY, (*nextSquarePtr).distance))
+
+		if nextSquarePtr == nil {
+			logOnExit(fmt.Sprintf("Failed to find shortest route! Stuck at %v steps", len(routeSquares)))
+			break
+		}
+
+		// TODO is it possible for route to double back over itself and get into infinite loop?
+		// Probably not b/c that would mean it deviated from the shortest route at some point ... (?)
+
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 
@@ -383,7 +451,7 @@ func main() {
 
 	draw(gridPtr)
 
-	go calculateDistancesToExit(gridPtr)
+	go findShortestRoute(gridPtr)
 
 loop:
 	for {
