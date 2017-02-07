@@ -13,8 +13,9 @@ import (
 // build a random list of 100 numbers from 0..999
 func randomNumbers() ([]int) {
 	var rander *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
-	nums := make([]int, 100)
-	for i := 0; i < 100; i++ {
+	l := 1000
+	nums := make([]int, l)
+	for i := 0; i < l; i++ {
 		nums[i] = rander.Intn(1000)
 	}
 	sort.Ints(nums)
@@ -29,17 +30,18 @@ func randomNumberInList(nums []int) (int) {
 }
 
 func binarySearch(nums []int, n int) (ind, iterations int, err error) {
-	for len(nums) > 0 {
+	var bottom, top int = 0, len(nums) - 1
+	for top >= bottom {
 		iterations++
-		ind = int(math.Floor((float64(len(nums)) - 1) / 2))	// midpoint
+		ind = bottom + int(math.Floor(float64((top - bottom) / 2)))	// midpoint
+		fmt.Printf("%v..(%v)..%v (%v)\n", bottom, ind, top, nums[ind])
 		if nums[ind] == n {
 			return
-		} else if nums[ind] > n {
-			nums = nums[0:ind]
+		} else if nums[ind] < n {
+			bottom = ind + 1
 		} else {
-			nums = nums[ind+1:]
+			top = ind - 1
 		}
-		fmt.Println(nums)
 	}
 	err = fmt.Errorf("Could not find %v", n)
 	return
@@ -49,7 +51,7 @@ func main() {
 	nums := randomNumbers()
 	fmt.Println(nums)
 	numToFind := randomNumberInList(nums)
-	fmt.Println("finding", numToFind)
+	fmt.Println("Finding", numToFind)
 	ind, iterations, err := binarySearch(nums, numToFind)
 	if err != nil {
 		fmt.Println("Failed:", err)

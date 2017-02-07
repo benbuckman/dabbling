@@ -125,9 +125,11 @@ func main() {
 	fmt.Println("---------------------------------")
 
 	func() {
+		fmt.Println("Slices!")
 		nums := []int{1,2,3,4,5}
 		fmt.Println(nums[:2])	// [1,2]
 		fmt.Println(nums[3:])	// [4,5]
+		fmt.Println(nums[:5])	// [?]
 	}()
 
 	fmt.Println("---------------------------------")
