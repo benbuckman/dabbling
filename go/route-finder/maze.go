@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/nsf/termbox-go"
 	"time"
+	"math/rand"
 )
 
 const (
@@ -18,9 +19,9 @@ const (
 	boardBackgroundColor  = termbox.ColorBlack
 )
 
-var gridWidth, gridHeight int
+var rander *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// TODO change `int`s to smaller types?
+var gridWidth, gridHeight int
 
 type gridSquare struct {
 	// self-awareness/bidirectional ref of position on the grid
@@ -69,20 +70,18 @@ func initialLayout() *[]string {
 	// layout in human-readable format.
 	// see `mapColor()` for allowed letters.
 	return &[]string{
-		"           E           ",
-		"                       ",
-		"XXXXXXXXXXX XXXXXXXXXXX",
-		"X                     X",
-		"XXXXXX XXXXXXXXXXXXXXXX",
-		"X                     X",
-		"XXXXXXXXXXXXXXXXXXX XXX",
-		"X                     X",
-		"X   XXXXX     XXXXXXXXX",
-		"X                     X",
-		"X          S          X",
-		"X                     X",
-		"X                     X",
-		"XXXXXXXXXXXXXXXXXXXXXXX",
+		" XXXXXXXXXXEXXXXXXXXXX",
+		" X                   X",
+		" X XX XXXXXXXXXXX XX X",
+		" X                   X",
+		" X  XXXX XXXXX XXXX  X",
+		" X                   X",
+		" X    XXXX   XXXX    X",
+		" X                   X",
+		" X       XXXXX       X",
+		" X                   X",
+		" X         S         X",
+		" XXXXXXXXXXXXXXXXXXXXX",
 	}
 }
 
@@ -174,8 +173,6 @@ func draw(gridPtr *gameGrid) {
 		var distanceStr string
 		if (*square).distance != -1 {
 			distanceStr = fmt.Sprintf("%v", (*square).distance)
-		} else {
-			distanceStr = "-"
 		}
 		for i, r := range distanceStr {
 			termbox.SetCell(startScreenX + i, startScreenY, r, termbox.ColorWhite, boardBackgroundColor)
@@ -249,9 +246,13 @@ func getAdjacentSquareWithShortestRoute(gridPtr *gameGrid, squarePtr, endPtr *gr
 		if areGridSquaresEqual(adjacentSquarePtr, endPtr) {
 			// at the end
 			lowestDistanceSquarePtr = adjacentSquarePtr
-		} else if (*adjacentSquarePtr).distance != -1 &&
-			(lowestDistanceSquarePtr == nil || (*lowestDistanceSquarePtr).distance > (*adjacentSquarePtr).distance) {
-			lowestDistanceSquarePtr = adjacentSquarePtr
+		} else if (*adjacentSquarePtr).distance != -1 {
+			// first or shortest known distance;
+			// or if same distance, pick a random path (more fun to watch!)
+			if (lowestDistanceSquarePtr == nil || (*lowestDistanceSquarePtr).distance > (*adjacentSquarePtr).distance) ||
+				(*lowestDistanceSquarePtr).distance == (*adjacentSquarePtr).distance && rander.Intn(2) == 0 {
+				lowestDistanceSquarePtr = adjacentSquarePtr
+			}
 		}
 	}
 
@@ -268,6 +269,7 @@ func areGridSquaresEqual(squarePtr1, squarePtr2 *gridSquare) bool {
 	// TODO why isn't this pointer comparison working? identical squares should have same pointers :-/
 	//if squarePtr1 == squarePtr2 {
 	if (*squarePtr1).posX == (*squarePtr2).posX && (*squarePtr1).posY == (*squarePtr2).posY {
+		//logOnExit(fmt.Sprintf("pointer equality check: %v", (squarePtr1 == squarePtr2)))
 		return true
 	} else {
 		return false
@@ -343,8 +345,6 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 			(*squarePtr).posX, (*squarePtr).posY, distance, len(adjacentPtrs)))
 
 		for _, adjacentSquarePtr := range adjacentPtrs {
-			//logOnExit(fmt.Sprintf("at adjacent square %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
-
 			// if we've reached the starting square, then we've already found the shortest route to the end,
 			// so bail.
 			if areGridSquaresEqual(adjacentSquarePtr, startPtr) {
@@ -364,8 +364,6 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 				//logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
 			}
 		}
-		//logOnExit(fmt.Sprintf("After %v,%v, queue has %v", (*squarePtr).posX, (*squarePtr).posX, len(queue)))
-
 		time.Sleep(10 * time.Millisecond)
 
 		if len(queue) > 0 {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"math"
+	"math/rand"
+	"time"
 )
 
 var topNumber int // shared top-level scope
@@ -235,7 +237,13 @@ func main() {
 		fmt.Printf("equal pointers? %v\n", isEqual)
 	}()
 
-
 	fmt.Println("---------------------------------")
 
+	// random numbers
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 10; i++ {
+		fmt.Println(bool(r.Intn(2) == 0))
+	}
+
+	fmt.Println("---------------------------------")
 }
