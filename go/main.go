@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"math"
 )
 
 var topNumber int // shared top-level scope
@@ -121,14 +122,120 @@ func main() {
 
 	fmt.Println("---------------------------------")
 
-	// "shift" an array
-	nums := []int{}
-	for i := 0; i < 10; i++ {
-		nums = append(nums, i)
-	}
-	for len(nums) > 0 {
-		nums = nums[1:]
+	func() {
+		// "shift" an array
+		nums := []int{}
+		for i := 0; i < 10; i++ {
+			nums = append(nums, i)
+		}
+		for len(nums) > 0 {
+			nums = nums[1:]
+			fmt.Println(nums)
+		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	func() {
+		// "pop" an array
+		// TODO is there a simpler way to do this??
+		nums := []int{}
+		for i := 1; i <= 10; i++ {
+			nums = append(nums, i)
+		}
 		fmt.Println(nums)
+
+		popNum := func() (int, bool) {
+			if len(nums) == 0 {
+				return 0, false
+			}
+			last := nums[len(nums) - 1]
+			nums = nums[:len(nums) - 1]	// ??
+			return last, true
+		}
+
+		for {
+			n, exists := popNum()
+			if exists == false {
+				break
+			}
+			fmt.Printf("popped %v, remaining: %v\n", n, nums)
+		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	getEmptyCharboard := func(x, y int) *[][]rune {
+		b := make([][]rune, x)
+		for i := range b {
+			b[i] = make([]rune, y)
+		}
+		return &b
 	}
+
+	charboard := *getEmptyCharboard(10, 5)
+	for _, r := range charboard {
+		for j := range r {
+			r[j] = 'X'
+		}
+	}
+
+	fmt.Printf("%v", charboard)
+
+	fmt.Println("---------------------------------")
+
+	showValAndType := func(v interface{}) {
+		fmt.Printf("%v %T\n", v, v)
+	}
+	showValAndType(0)
+	showValAndType(0.0)
+	showValAndType(1)
+	showValAndType(1.0)
+
+	func() {
+		dividedNumber := 9 / 5
+		fmt.Printf("Divide int by int: %v (%T)\n", dividedNumber, dividedNumber)
+	}()
+	func() {
+		dividedNumber := float64(9) / 5
+		fmt.Printf("Divide float by int: %v (%T)\n", dividedNumber, dividedNumber)
+	}()
+	func() {
+		flooredNumber := math.Floor(float64(9) / 5)
+		fmt.Printf("Floor: %v (%T)\n", flooredNumber, flooredNumber)
+	}()
+
+	fmt.Println("---------------------------------")
+
+	// pointer to array element?
+	arr := []int{1,2,3,4,5,6}
+	elPtr := &arr[2]
+	*elPtr = 10
+	fmt.Println(arr)
+
+	elPtrs := []*int{&arr[3], &arr[4]}
+	for _, elPtr = range elPtrs {
+		*elPtr = 20
+	}
+	fmt.Println(arr)
+
+	fmt.Println("---------------------------------")
+
+	fmt.Println(fmt.Sprintf("%v", 100))
+
+	fmt.Println("---------------------------------")
+
+	// compare pointers?
+
+	func() {
+		var n int = 1
+		nPtr1 := &n
+		nPtr2 := &n
+		var isEqual bool = (nPtr1 == nPtr2)
+		fmt.Printf("equal pointers? %v\n", isEqual)
+	}()
+
+
+	fmt.Println("---------------------------------")
 
 }
