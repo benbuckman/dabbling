@@ -74,7 +74,7 @@ func initialLayout() *[]string {
 		"X                   X",
 		"X XX XXXXXXXXXXX    X",
 		"X                   X",
-		"X  XXXX XXXXX XXXX  X",
+		"X  XXX  XXXXX XXXX  X",
 		"X                   X",
 		"X    XXXX X XXXX    X",
 		"X                   X",
@@ -372,7 +372,7 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 			}
 
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(30 * time.Millisecond)
 
 		if len(queue) > 0 {
 			// shift
@@ -393,6 +393,8 @@ func findShortestRoute(gridPtr *gameGrid) {
 
 	calculateDistancesToExit(gridPtr, startPtr, endPtr)
 
+	drawText(fmt.Sprintf("Expect to complete in %v steps", (*startPtr).distance))
+
 	logOnExit("Finding route...")
 	var routeSquares []*gridSquare
 	nextSquarePtr := startPtr
@@ -404,7 +406,7 @@ func findShortestRoute(gridPtr *gameGrid) {
 		// the end square should have distance 0,
 		// so when we're adjacent to it, it should be the closest/next.
 		if areGridSquaresEqual(nextSquarePtr, endPtr) {
-			drawText(fmt.Sprintf("Found shortest route in %v steps", len(routeSquares)))
+			drawText(fmt.Sprintf("Found shortest route in %v steps", len(routeSquares) - 1))  // omit start
 			break
 		}
 

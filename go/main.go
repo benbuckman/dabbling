@@ -127,6 +127,10 @@ func main() {
 	func() {
 		fmt.Println("Slices!")
 		nums := []int{1,2,3,4,5}
+		fmt.Println(nums[0:5])		// [1,2,3,4,5]
+		fmt.Println(nums[:len(nums)])	// [1,2,3,4,5]
+		fmt.Println(nums[:len(nums)-1])	// [1,2,3,4]
+		fmt.Println(nums[1:5])		// [2,3,4,5]
 		fmt.Println(nums[:2])	// [1,2]
 		fmt.Println(nums[3:])	// [4,5]
 		fmt.Println(nums[:5])	// [?]
@@ -265,6 +269,45 @@ func main() {
 			nPtr := &(nums[i])
 			fmt.Printf("nums[%v]: %v, %v, %v, %v, %v\n", i, n, nums[i], *nPtr, (&(nums[i]) == nPtr), (nPtr == &n))
 		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	fmt.Println("String concatenation")
+
+	func() {
+		var str1, str2 string
+
+		for _, r := range []rune{'a', 'b', 'c', 'd', 'e', 'f'} {
+			str1 += string(r)
+			str2 = string(r) + str2
+			fmt.Printf("Add '%v', have '%v', '%v'\n", string(r), str1, str2)
+		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	fmt.Println("String shrinking")
+
+	func() {
+		str := "abcdef"
+		for len(str) > 0 {
+			fmt.Println(str)
+			str = str[:len(str) - 1]
+		}
+	}()
+
+	fmt.Println("---------------------------------")
+
+	fmt.Println("Chars in strings")
+
+	func() {
+		str := "abcdef"
+		fmt.Println(str[0])  		// 97
+		fmt.Println(string(str[0]))  	// "a"
+		fmt.Println(rune(str[0]))  	// 'a'
+		fmt.Println("zz" + string(rune(str[0])))  // "zza"
+		fmt.Println(string(str[len(str) - 1]))  // "f"
 	}()
 
 	fmt.Println("---------------------------------")
