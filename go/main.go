@@ -256,4 +256,16 @@ func main() {
 	}
 
 	fmt.Println("---------------------------------")
+
+	func() {
+		nums := []int{1, 2, 3}
+
+		// `n` is a copy! to get a pointer, access directly by index.
+		for i, n := range nums {
+			nPtr := &(nums[i])
+			fmt.Printf("nums[%v]: %v, %v, %v, %v, %v\n", i, n, nums[i], *nPtr, (&(nums[i]) == nPtr), (nPtr == &n))
+		}
+	}()
+
+	fmt.Println("---------------------------------")
 }

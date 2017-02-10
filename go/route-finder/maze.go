@@ -70,22 +70,22 @@ func initialLayout() *[]string {
 	// layout in human-readable format.
 	// see `mapColor()` for allowed letters.
 	return &[]string{
-		" XXXXXXXXXXEXXXXXXXXXX",
-		" X                   X",
-		" X XX XXXXXXXXXXX XX X",
-		" X                   X",
-		" X  XXXX XXXXX XXXX  X",
-		" X                   X",
-		" X    XXXX   XXXX    X",
-		" X                   X",
-		" X       XXXXX       X",
-		" X                   X",
-		" X         S         X",
-		" XXXXXXXXXXXXXXXXXXXXX",
+		"XXXXXXXXXXEXXXXXXXXXX",
+		"X                   X",
+		"X XX XXXXXXXXXXX    X",
+		"X                   X",
+		"X  XXXX XXXXX XXXX  X",
+		"X                   X",
+		"X    XXXX X XXXX    X",
+		"X                   X",
+		"X  XXX  XXXXX  XXX  X",
+		"X                   X",
+		"X         S         X",
+		"XXXXXXXXXXXXXXXXXXXXX",
 	}
 }
 
-// Every spot in the grid should have one.
+// Every spot in the grid should have a square.
 func addSquareToGrid(gridPtr *gameGrid, posX int, posY int, marker rune) {
 	square := gridSquare{
 		marker: marker,
@@ -94,6 +94,10 @@ func addSquareToGrid(gridPtr *gameGrid, posX int, posY int, marker rune) {
 		distance: -1,	// unknown
 	}
 	(*gridPtr)[posX][posY] = square
+}
+
+func getSquarePtr(gridPtr *gameGrid, posX, posY int) (squarePtr *gridSquare) {
+	return &((*gridPtr)[posX][posY])
 }
 
 func initGrid() *gameGrid {
@@ -116,6 +120,7 @@ func initGrid() *gameGrid {
 			addSquareToGrid(&grid, x, y, r)
 		}
 	}
+
 	return &grid
 }
 
@@ -179,14 +184,15 @@ func draw(gridPtr *gameGrid) {
 		}
 	}
 
-	for _, row := range *gridPtr {
-		for _, square := range row {
-			if square.marker == ' ' {
+	for x := range *gridPtr {
+		for y := range (*gridPtr)[x] {
+			squarePtr := getSquarePtr(gridPtr, x, y)
+			if (*squarePtr).marker == ' ' {
 				// empty space
-				drawEmptySpace(&square)
+				drawEmptySpace(squarePtr)
 			} else {
 				// wall or piece
-				drawGridPiece(&square)
+				drawGridPiece(squarePtr)
 			}
 		}
 	}
@@ -213,7 +219,7 @@ func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare 
 
 	addIfValidAndEmpty := func(x, y int) {
 		if x >= 0 && y >= 0 && x < gridWidth && y < gridHeight {
-			squarePtr := &(*gridPtr)[x][y]
+			squarePtr := getSquarePtr(gridPtr, x, y)
 			if (*squarePtr).marker != 'X' {
 				adjacent = append(adjacent, squarePtr)
 			}
@@ -235,11 +241,11 @@ func getAdjacentSquares(gridPtr *gameGrid, squarePtr *gridSquare) []*gridSquare 
 func getAdjacentSquareWithShortestRoute(gridPtr *gameGrid, squarePtr, endPtr *gridSquare) (lowestDistanceSquarePtr *gridSquare) {
 	adjacentSquarePtrs := getAdjacentSquares(gridPtr, squarePtr)
 
-	//tmp
 	origMarkers := make([]rune, 0)
 
-	for _, adjacentSquarePtr := range adjacentSquarePtrs {
-		// tmp - flash the adjacent squares
+	for ptrInd := range adjacentSquarePtrs {
+		adjacentSquarePtr := adjacentSquarePtrs[ptrInd]
+		// flash the adjacent squares
 		origMarkers = append(origMarkers, (*adjacentSquarePtr).marker)
 		(*adjacentSquarePtr).marker = 'M'
 
@@ -256,20 +262,20 @@ func getAdjacentSquareWithShortestRoute(gridPtr *gameGrid, squarePtr, endPtr *gr
 		}
 	}
 
-	// tmp
 	time.Sleep(100 * time.Millisecond)
-	for i, adjacentSquarePtr := range adjacentSquarePtrs {
-		(*adjacentSquarePtr).marker = origMarkers[i]
+	for i := range adjacentSquarePtrs {
+		(*adjacentSquarePtrs[i]).marker = origMarkers[i]
 	}
 
 	return
 }
 
 func areGridSquaresEqual(squarePtr1, squarePtr2 *gridSquare) bool {
-	// TODO why isn't this pointer comparison working? identical squares should have same pointers :-/
-	//if squarePtr1 == squarePtr2 {
-	if (*squarePtr1).posX == (*squarePtr2).posX && (*squarePtr1).posY == (*squarePtr2).posY {
-		//logOnExit(fmt.Sprintf("pointer equality check: %v", (squarePtr1 == squarePtr2)))
+	// Doing pointer comparison, assumes squares are always passed as pointers,
+	// never copies! Be careful with `range` making copies!
+	if squarePtr1 == squarePtr2 {
+	//if (*squarePtr1).posX == (*squarePtr2).posX && (*squarePtr1).posY == (*squarePtr2).posY {
+		logOnExit(fmt.Sprintf("pointer equality check: %v", (squarePtr1 == squarePtr2)))
 		return true
 	} else {
 		return false
@@ -278,25 +284,24 @@ func areGridSquaresEqual(squarePtr1, squarePtr2 *gridSquare) bool {
 
 // Start indicated by 'S', end by 'E'. Should be only 1 of each.
 func findMazeStartAndEnd(gridPtr *gameGrid) (startPtr, endPtr *gridSquare) {
-	for _, row := range *gridPtr {
-		for _, square  := range row {
-			// need local var so
-			square := square
+	for x := range *gridPtr {
+		for y := range (*gridPtr)[x] {
+			squarePtr := getSquarePtr(gridPtr, x, y)
 
-			switch square.marker {
+			switch (*squarePtr).marker {
 			case 'S':
 				if startPtr != nil {
 					panic("Too many start positions ('S') marked!")
 				}
-				startPtr = &square
-				drawText(fmt.Sprintf("Found start at %v,%v (dist:%v)", square.posX, square.posY, square.distance))
+				startPtr = squarePtr
+				drawText(fmt.Sprintf("Found start at %v,%v (dist:%v)", (*squarePtr).posX, (*squarePtr).posY, (*squarePtr).distance))
 
 			case 'E':
 				if endPtr != nil {
 					panic("Too many end positions ('E') marked!")
 				}
-				endPtr = &square
-				drawText(fmt.Sprintf("Found end at %v,%v", square.posX, square.posY))
+				endPtr = squarePtr
+				drawText(fmt.Sprintf("Found end at %v,%v", (*squarePtr).posX, (*squarePtr).posY))
 			}
 		}
 	}
@@ -331,6 +336,7 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 
 	assignDistanceToSquare := func(squarePtr *gridSquare, distance int) {
 		countAssignments++
+		logOnExit(fmt.Sprintf("assigning to %v,%v: %v", (*squarePtr).posX, (*squarePtr).posY, distance))
 		(*squarePtr).distance = distance
 	}
 
@@ -339,19 +345,13 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 	var assignAndQueueAdjacentSquares func(squarePtr *gridSquare)
 	assignAndQueueAdjacentSquares = func(squarePtr *gridSquare) {
 		distance := (*squarePtr).distance + 1
-		adjacentPtrs := getAdjacentSquares(gridPtr, squarePtr)
+		adjacentSquarePtrs := getAdjacentSquares(gridPtr, squarePtr)
 
-		logOnExit(fmt.Sprintf("assigning to %v,%v: distance=%v, %v adjacent",
-			(*squarePtr).posX, (*squarePtr).posY, distance, len(adjacentPtrs)))
+		logOnExit(fmt.Sprintf("%v,%v (distance=%v) has %v adjacent",
+			(*squarePtr).posX, (*squarePtr).posY, (*squarePtr).distance, len(adjacentSquarePtrs)))
 
-		for _, adjacentSquarePtr := range adjacentPtrs {
-			// if we've reached the starting square, then we've already found the shortest route to the end,
-			// so bail.
-			if areGridSquaresEqual(adjacentSquarePtr, startPtr) {
-				logOnExit("Found start square, enough calculating!")
-				return
-			}
-
+		for ptrInd := range adjacentSquarePtrs {
+			adjacentSquarePtr := adjacentSquarePtrs[ptrInd]
 			// ignore if distance is already known,
 			// unless new distance is shorter than previously-calculated distance.
 			// (b/c might come from multiple directions)
@@ -363,6 +363,14 @@ func calculateDistancesToExit(gridPtr *gameGrid, startPtr, endPtr *gridSquare) {
 				queue = append(queue, adjacentSquarePtr)
 				//logOnExit(fmt.Sprintf("queued %v,%v", (*adjacentSquarePtr).posX, (*adjacentSquarePtr).posY))
 			}
+
+			// if we've reached the starting square, then we've already found the shortest route to the end,
+			// so bail.
+			if areGridSquaresEqual(adjacentSquarePtr, startPtr) {
+				logOnExit("Found start square, enough calculating!")
+				return
+			}
+
 		}
 		time.Sleep(10 * time.Millisecond)
 
@@ -391,7 +399,6 @@ func findShortestRoute(gridPtr *gameGrid) {
 	for {
 		previousSquareCopy := *nextSquarePtr
 
-		//logOnExit(fmt.Sprintf("Finding route, at %v,%v", (*nextSquarePtr).posX, (*nextSquarePtr).posY))
 		routeSquares = append(routeSquares, nextSquarePtr)
 
 		// the end square should have distance 0,
