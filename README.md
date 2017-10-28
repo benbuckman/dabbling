@@ -6,5 +6,5 @@
 ## Go
 
 - Maze / route finder:
-  ![](https://dl.dropboxusercontent.com/u/3862873/golang-maze1.gif)
+  ![](https://github.com/benbuckman/dabbling/raw/master/go/golang-maze1.gif)
   [**code**](https://github.com/benbuckman/dabbling/blob/master/go/route-finder/maze.go)
